@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Companies | PeopleSignal{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <div>
+        <h1 class="text-3xl font-bold">Companies</h1>
+        <p class="mt-2 text-slate-400">
+            Tracked care-sector organisations with signal, alias and insight indicators.
+        </p>
+    </div>
+
+    <a href="{{ url_for('companies.create_company') }}"
+       class="rounded-lg bg-cyan-500 px-4 py-2 font-semibold text-slate-950 hover:bg-cyan-400">
+        Add company
+    </a>
+</div>
+
+<section class="mb-6 grid gap-4 md:grid-cols-4">
+    <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+        <p class="text-sm text-slate-400">Companies</p>
+        <p class="mt-2 text-3xl font-bold">{{ company_rows|length }}</p>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+        <p class="text-sm text-slate-400">With signals</p>
+        <p class="mt-2 text-3xl font-bold text-cyan-300">
+            {{ company_rows|selectattr("signal_count", "gt", 0)|list|length }}
+        </p>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+        <p class="text-sm text-slate-400">With AI insights</p>
+        <p class="mt-2 text-3xl font-bold text-emerald-300">
+            {{ company_rows|selectattr("ai_insight_count", "gt", 0)|list|length }}
+        </p>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+        <p class="text-sm text-slate-400">With aliases</p>
+        <p class="mt-2 text-3xl font-bold text-amber-300">
+            {{ company_rows|selectattr("alias_count", "gt", 0)|list|length }}
+        </p>
+    </div>
+</section>
+
+<div class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+    <div class="border-b border-slate-800 px-6 py-4">
+        <h2 class="font-semibold text-white">Company review list</h2>
+        <p class="mt-1 text-sm text-slate-400">
+            Prioritise companies with recent signals, multiple aliases or generated AI insight.
+        </p>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+            <thead class="bg-slate-800 text-slate-300">
+                <tr>
+                    <th class="px-6 py-3">Company</th>
+                    <th class="px-6 py-3">Sector</th>
+                    <th class="px-6 py-3">Region</th>
+                    <th class="px-6 py-3">Signals</th>
+                    <th class="px-6 py-3">Latest source</th>
+                    <th class="px-6 py-3">Latest status</th>
+                    <th class="px-6 py-3">Latest date</th>
+                    <th class="px-6 py-3">AI insights</th>
+                    <th class="px-6 py-3">Aliases</th>
+                </tr>
+            </thead>
+
+            <tbody class="divide-y divide-slate-800">
+                {% for row in company_rows %}
+                    {% set company = row.company %}
+
+                    <tr class="hover:bg-slate-800/60">
+                        <td class="px-6 py-4">
+                            <div class="min-w-52">
+                                <a href="{{ url_for('companies.company_detail', company_id=company.id) }}"
+                                   class="font-medium text-cyan-400 hover:text-cyan-300">
+                                    {% if company.name == "Unknown Care Organisation" %}
+                                        Organisation not identified
+                                    {% else %}
+                                        {{ company.name }}
+                                    {% endif %}
+                                </a>
+
+                                {% if company.name == "Unknown Care Organisation" %}
+                                    <div class="mt-2 inline-flex rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
+                                        Needs company review
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <td class="px-6 py-4 text-slate-300">
+                            {{ company.sector or "-" }}
+                        </td>
+
+                        <td class="px-6 py-4 text-slate-300">
+                            {{ company.region or "-" }}
+                        </td>
+
+                        <td class="px-6 py-4">
+                            {% if row.signal_count > 0 %}
+                                <a href="{{ url_for('companies.company_detail', company_id=company.id) }}"
+                                   class="rounded-full bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/20">
+                                    {{ row.signal_count }}
+                                </a>
+                            {% else %}
+                                <span class="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-400">
+                                    0
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-6 py-4">
+                            {% if row.latest_signal_source %}
+                                {% if row.latest_signal_source == "Google News RSS" %}
+                                    <span class="rounded-full bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-300">
+                                        Google News
+                                    </span>
+                                {% elif row.latest_signal_source == "Companies House" %}
+                                    <span class="rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-300">
+                                        Companies House
+                                    </span>
+                                {% elif row.latest_signal_source == "Employment Tribunal Decisions" %}
+                                    <span class="rounded-full bg-rose-500/10 px-3 py-1 text-xs font-medium text-rose-300">
+                                        Tribunals
+                                    </span>
+                                {% elif row.latest_signal_source == "Sector RSS" %}
+                                    <span class="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300">
+                                        Sector RSS
+                                    </span>
+                                {% else %}
+                                    <span class="rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300">
+                                        {{ row.latest_signal_source }}
+                                    </span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-slate-500">-</span>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-6 py-4">
+                            {% if row.latest_signal_status == "new" %}
+                                <span class="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-300">
+                                    New
+                                </span>
+                            {% elif row.latest_signal_status == "reviewed" %}
+                                <span class="rounded-full bg-slate-700 px-3 py-1 text-xs font-medium text-slate-200">
+                                    Reviewed
+                                </span>
+                            {% elif row.latest_signal_status == "saved" %}
+                                <span class="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
+                                    Saved
+                                </span>
+                            {% elif row.latest_signal_status == "rejected" %}
+                                <span class="rounded-full bg-red-500/10 px-3 py-1 text-xs font-medium text-red-300">
+                                    Rejected
+                                </span>
+                            {% elif row.latest_signal_status == "contacted" %}
+                                <span class="rounded-full bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-300">
+                                    Contacted
+                                </span>
+                            {% else %}
+                                <span class="text-slate-500">-</span>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-6 py-4 text-slate-400">
+                            {{ row.latest_signal_date or "-" }}
+                        </td>
+
+                        <td class="px-6 py-4">
+                            {% if row.ai_insight_count > 0 %}
+                                <span class="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+                                    {{ row.ai_insight_count }}
+                                </span>
+                            {% else %}
+                                <span class="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-400">
+                                    0
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-6 py-4">
+                            {% if row.alias_count > 0 %}
+                                <span class="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
+                                    {{ row.alias_count }}
+                                </span>
+                            {% else %}
+                                <span class="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-400">
+                                    0
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="9" class="px-6 py-8 text-slate-400">
+                            No companies yet.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

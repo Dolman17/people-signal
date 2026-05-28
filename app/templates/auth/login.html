@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Login | PeopleSignal{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-md">
+    <div class="rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-xl">
+        <h1 class="text-2xl font-bold">Login</h1>
+        <p class="mt-2 text-sm text-slate-400">Access your HR intelligence dashboard.</p>
+
+        <form method="POST" class="mt-6 space-y-4">
+            <div>
+                <label class="text-sm font-medium text-slate-300">Email</label>
+                <input name="email" type="email" required
+                       class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
+            </div>
+
+            <div>
+                <label class="text-sm font-medium text-slate-300">Password</label>
+                <input name="password" type="password" required
+                       class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
+            </div>
+
+            <button class="w-full rounded-lg bg-cyan-500 px-4 py-2 font-semibold text-slate-950 hover:bg-cyan-400">
+                Login
+            </button>
+        </form>
+
+        <p class="mt-6 text-sm text-slate-400">
+            No account?
+            <a href="{{ url_for('auth.register') }}" class="text-cyan-400 hover:text-cyan-300">Register</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

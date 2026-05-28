@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+instance/
+.env
+*.db
+*.sqlite
+*.sqlite3
+people_signal_export.json
+hls_cache/
+page_cache/
+.DS_Store
+.vscode/

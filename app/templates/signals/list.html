@@ -1,0 +1,475 @@
+{% extends "base.html" %}
+
+{% block title %}Signals | PeopleSignal{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <div>
+        <h1 class="text-3xl font-bold">Signals</h1>
+        <p class="mt-2 text-slate-400">Detected people-risk indicators.</p>
+    </div>
+
+    <a href="{{ url_for('signals.create_signal') }}"
+       class="inline-flex rounded-lg bg-cyan-500 px-4 py-2 font-semibold text-slate-950 hover:bg-cyan-400">
+        Add signal
+    </a>
+</div>
+
+<section class="mb-4 rounded-2xl border border-slate-800 bg-slate-900 p-2">
+    <div class="flex flex-wrap gap-2">
+        <a href="{{ url_for('signals.list_signals') }}"
+           class="rounded-xl px-4 py-2 text-sm font-semibold {% if not active_filters.source %}bg-cyan-500 text-slate-950{% else %}text-slate-300 hover:bg-slate-800{% endif %}">
+            All sources
+        </a>
+
+        <a href="{{ url_for('signals.list_signals', source='Google News RSS') }}"
+           class="rounded-xl px-4 py-2 text-sm font-semibold {% if active_filters.source == 'Google News RSS' %}bg-cyan-500 text-slate-950{% else %}text-slate-300 hover:bg-slate-800{% endif %}">
+            Google News
+        </a>
+
+        <a href="{{ url_for('signals.list_signals', source='Companies House') }}"
+           class="rounded-xl px-4 py-2 text-sm font-semibold {% if active_filters.source == 'Companies House' %}bg-cyan-500 text-slate-950{% else %}text-slate-300 hover:bg-slate-800{% endif %}">
+            Companies House
+        </a>
+
+        <a href="{{ url_for('signals.list_signals', source='Employment Tribunal Decisions') }}"
+           class="rounded-xl px-4 py-2 text-sm font-semibold {% if active_filters.source == 'Employment Tribunal Decisions' %}bg-cyan-500 text-slate-950{% else %}text-slate-300 hover:bg-slate-800{% endif %}">
+            Tribunals
+        </a>
+
+        <a href="{{ url_for('signals.list_signals', source='Sector RSS') }}"
+           class="rounded-xl px-4 py-2 text-sm font-semibold {% if active_filters.source == 'Sector RSS' %}bg-cyan-500 text-slate-950{% else %}text-slate-300 hover:bg-slate-800{% endif %}">
+            Sector RSS
+        </a>
+
+        <a href="{{ url_for('signals.list_signals', source='Local Authority Tenders') }}"
+           class="rounded-xl px-4 py-2 text-sm font-semibold {% if active_filters.source == 'Local Authority Tenders' %}bg-cyan-500 text-slate-950{% else %}text-slate-300 hover:bg-slate-800{% endif %}">
+            LA Tenders
+        </a>
+
+        <a href="{{ url_for('signals.list_signals', source='Find a Tender') }}"
+           class="rounded-xl px-4 py-2 text-sm font-semibold {% if active_filters.source == 'Find a Tender' %}bg-cyan-500 text-slate-950{% else %}text-slate-300 hover:bg-slate-800{% endif %}">
+            Find a Tender
+        </a>
+
+        <a href="{{ url_for('signals.list_signals', source='Manual Source') }}"
+           class="rounded-xl px-4 py-2 text-sm font-semibold {% if active_filters.source == 'Manual Source' %}bg-cyan-500 text-slate-950{% else %}text-slate-300 hover:bg-slate-800{% endif %}">
+            Manual
+        </a>
+    </div>
+</section>
+
+<section class="mb-6 rounded-2xl border border-slate-800 bg-slate-900 p-2">
+    <div class="flex flex-wrap gap-2">
+        <a href="{{ url_for('signals.list_signals', source=active_filters.source) if active_filters.source else url_for('signals.list_signals') }}"
+           class="rounded-xl px-4 py-2 text-sm font-semibold {% if not active_filters.review_status %}bg-cyan-500 text-slate-950{% else %}text-slate-300 hover:bg-slate-800{% endif %}">
+            All statuses
+        </a>
+
+        {% for status in review_status_options %}
+            <a href="{{ url_for('signals.list_signals', source=active_filters.source, review_status=status) if active_filters.source else url_for('signals.list_signals', review_status=status) }}"
+               class="rounded-xl px-4 py-2 text-sm font-semibold {% if active_filters.review_status == status %}bg-cyan-500 text-slate-950{% else %}text-slate-300 hover:bg-slate-800{% endif %}">
+                {{ status.title() }}
+            </a>
+        {% endfor %}
+
+        <a href="{{ url_for('signals.prospects') }}"
+           class="rounded-xl px-4 py-2 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/10">
+            Prospects
+        </a>
+    </div>
+</section>
+
+<section class="mb-6 rounded-2xl border border-slate-800 bg-slate-900 p-5">
+    <form method="GET" action="{{ url_for('signals.list_signals') }}" class="grid gap-4 lg:grid-cols-6">
+        <div>
+            <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Search</label>
+            <input type="text"
+                   name="search"
+                   value="{{ active_filters.search }}"
+                   placeholder="Company, title, text..."
+                   class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600">
+        </div>
+
+        <div>
+            <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Source</label>
+            <select name="source"
+                    class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100">
+                <option value="">All sources</option>
+                {% for source in source_options %}
+                    <option value="{{ source }}" {% if active_filters.source == source %}selected{% endif %}>
+                        {{ source }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Signal type</label>
+            <select name="signal_type"
+                    class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100">
+                <option value="">All signal types</option>
+                {% for signal_type in signal_type_options %}
+                    <option value="{{ signal_type }}" {% if active_filters.signal_type == signal_type %}selected{% endif %}>
+                        {{ signal_type.replace("_", " ") }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Review status</label>
+            <select name="review_status"
+                    class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100">
+                <option value="">All statuses</option>
+                {% for status in review_status_options %}
+                    <option value="{{ status }}" {% if active_filters.review_status == status %}selected{% endif %}>
+                        {{ status.title() }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Min confidence</label>
+            <input type="number"
+                   name="min_confidence"
+                   min="0"
+                   max="10"
+                   step="0.1"
+                   value="{{ active_filters.min_confidence }}"
+                   placeholder="e.g. 7"
+                   class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600">
+        </div>
+
+        <div class="flex items-end gap-2">
+            <button class="w-full rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400">
+                Apply
+            </button>
+
+            <a href="{{ url_for('signals.list_signals') }}"
+               class="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800">
+                Reset
+            </a>
+        </div>
+    </form>
+</section>
+
+<div class="space-y-4">
+    {% for signal in signals %}
+
+        {% set raw_text = signal.raw_text or "" %}
+
+        {% set pdf_parts = raw_text.split("PDF link:") %}
+        {% set text_before_pdf = pdf_parts[0].strip() %}
+        {% set pdf_and_after = pdf_parts[1].strip() if pdf_parts|length > 1 else "" %}
+
+        {% if pdf_and_after %}
+            {% set judgment_parts = pdf_and_after.split("Judgment excerpt:") %}
+            {% set pdf_link = judgment_parts[0].strip() %}
+        {% else %}
+            {% set pdf_link = "" %}
+        {% endif %}
+
+        {% set source_parts = text_before_pdf.split("Source link:") %}
+        {% set text_without_link = source_parts[0].strip() %}
+        {% set source_link = source_parts[1].strip() if source_parts|length > 1 else "" %}
+
+        {% set quality_parts = text_without_link.split("Quality reason:") %}
+        {% set text_without_quality = quality_parts[0].strip() %}
+        {% set quality_text = quality_parts[1].strip() if quality_parts|length > 1 else "" %}
+
+        {% set why_parts = text_without_quality.split("Why this matters:") %}
+        {% set summary_text = why_parts[0].strip() %}
+        {% set why_text = why_parts[1].strip() if why_parts|length > 1 else "" %}
+
+        {% set tender_buyer = "" %}
+        {% set tender_region = "" %}
+        {% set tender_status = "" %}
+        {% set tender_deadline = "" %}
+        {% set tender_value_low = "" %}
+        {% set tender_value_high = "" %}
+        {% set tender_estimated_value = "" %}
+        {% set tender_notice_id = "" %}
+
+        {% if signal.source in ["Local Authority Tenders", "Find a Tender"] %}
+            {% if "Buyer:" in raw_text %}
+                {% set buyer_parts = raw_text.split("Buyer:") %}
+                {% set tender_buyer = buyer_parts[1].split("\n")[0].strip() if buyer_parts|length > 1 else "" %}
+            {% endif %}
+
+            {% if "Region:" in raw_text %}
+                {% set region_parts = raw_text.split("Region:") %}
+                {% set tender_region = region_parts[1].split("\n")[0].strip() if region_parts|length > 1 else "" %}
+            {% endif %}
+
+            {% if "Status:" in raw_text %}
+                {% set status_parts = raw_text.split("Status:") %}
+                {% set tender_status = status_parts[1].split("\n")[0].strip() if status_parts|length > 1 else "" %}
+            {% endif %}
+
+            {% if "Deadline:" in raw_text %}
+                {% set deadline_parts = raw_text.split("Deadline:") %}
+                {% set tender_deadline = deadline_parts[1].split("\n")[0].strip() if deadline_parts|length > 1 else "" %}
+            {% endif %}
+
+            {% if "Estimated value low:" in raw_text %}
+                {% set value_low_parts = raw_text.split("Estimated value low:") %}
+                {% set tender_value_low = value_low_parts[1].split("\n")[0].strip() if value_low_parts|length > 1 else "" %}
+            {% endif %}
+
+            {% if "Estimated value high:" in raw_text %}
+                {% set value_high_parts = raw_text.split("Estimated value high:") %}
+                {% set tender_value_high = value_high_parts[1].split("\n")[0].strip() if value_high_parts|length > 1 else "" %}
+            {% endif %}
+
+            {% if "Estimated value:" in raw_text %}
+                {% set value_parts = raw_text.split("Estimated value:") %}
+                {% set tender_estimated_value = value_parts[1].split("\n")[0].strip() if value_parts|length > 1 else "" %}
+            {% endif %}
+
+            {% if "Notice ID:" in raw_text %}
+                {% set notice_parts = raw_text.split("Notice ID:") %}
+                {% set tender_notice_id = notice_parts[1].split("\n")[0].strip() if notice_parts|length > 1 else "" %}
+            {% endif %}
+        {% endif %}
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm transition hover:border-cyan-500/40 hover:bg-slate-900/90">
+            <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div class="min-w-0">
+                    {% if signal.company.name == "Unknown Care Organisation" %}
+                        <div class="mb-2 inline-flex rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
+                            Company needs review
+                        </div>
+
+                        <p class="text-sm font-semibold text-slate-300">
+                            Organisation not identified
+                        </p>
+                    {% else %}
+                        <a href="{{ url_for('companies.company_detail', company_id=signal.company.id) }}"
+                           class="text-sm font-semibold text-cyan-400 hover:text-cyan-300">
+                            {{ signal.company.name }}
+                        </a>
+                    {% endif %}
+
+                    <h2 class="mt-3 text-lg font-semibold text-white">
+                        {{ signal.title|striptags|replace("&nbsp;", " ") if signal.title else "Untitled signal" }}
+                    </h2>
+
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        {% if signal.source == "Employment Tribunal Decisions" and pdf_link %}
+                            <span class="rounded-full bg-rose-500/10 px-3 py-1 text-xs font-medium text-rose-300">
+                                📎 PDF available
+                            </span>
+                        {% endif %}
+
+                        {% if signal.source == "Local Authority Tenders" %}
+                            <span class="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
+                                Tender opportunity
+                            </span>
+                        {% endif %}
+
+                        {% if signal.source == "Find a Tender" %}
+                            <span class="rounded-full bg-teal-500/10 px-3 py-1 text-xs font-medium text-teal-300">
+                                Higher-value tender
+                            </span>
+                        {% endif %}
+
+                        {% if signal.source %}
+                            <span class="rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300">
+                                {{ signal.source }}
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="flex shrink-0 flex-wrap items-center gap-2">
+                    {% if signal.review_status == "new" %}
+                        <span class="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-300">New</span>
+                    {% elif signal.review_status == "reviewed" %}
+                        <span class="rounded-full bg-slate-700 px-3 py-1 text-xs font-medium text-slate-200">Reviewed</span>
+                    {% elif signal.review_status == "saved" %}
+                        <span class="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">Saved</span>
+                    {% elif signal.review_status == "rejected" %}
+                        <span class="rounded-full bg-red-500/10 px-3 py-1 text-xs font-medium text-red-300">Rejected</span>
+                    {% elif signal.review_status == "contacted" %}
+                        <span class="rounded-full bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-300">Contacted</span>
+                    {% else %}
+                        <span class="rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300">
+                            {{ signal.review_status or "new" }}
+                        </span>
+                    {% endif %}
+
+                    <span class="rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300">
+                        {{ signal.signal_type.replace("_", " ") if signal.signal_type else "unknown signal" }}
+                    </span>
+
+                    <span class="rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300">
+                        Confidence {{ signal.confidence_score or 0 }}
+                    </span>
+                </div>
+            </div>
+
+            {% if signal.source in ["Local Authority Tenders", "Find a Tender"] %}
+                <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                    <div class="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Buyer</p>
+                        <p class="mt-2 text-sm font-semibold text-slate-200">
+                            {{ tender_buyer or signal.company.name or "Unknown" }}
+                        </p>
+                    </div>
+
+                    <div class="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Region</p>
+                        <p class="mt-2 text-sm font-semibold text-slate-200">
+                            {{ tender_region or "Unknown" }}
+                        </p>
+                    </div>
+
+                    <div class="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</p>
+                        <p class="mt-2 text-sm font-semibold {% if signal.source == 'Find a Tender' %}text-teal-300{% else %}text-emerald-300{% endif %}">
+                            {{ tender_status or "Unknown" }}
+                        </p>
+                    </div>
+
+                    <div class="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Deadline</p>
+                        <p class="mt-2 text-sm font-semibold text-amber-300">
+                            {{ tender_deadline or "Unknown" }}
+                        </p>
+                    </div>
+
+                    <div class="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Estimated value</p>
+                        <p class="mt-2 text-sm font-semibold text-slate-200">
+                            {% if tender_estimated_value and tender_estimated_value != "Unknown" %}
+                                {{ tender_estimated_value }}
+                            {% elif tender_value_low and tender_value_high and tender_value_low != "Unknown" and tender_value_high != "Unknown" %}
+                                {{ tender_value_low }} – {{ tender_value_high }}
+                            {% elif tender_value_low and tender_value_low != "Unknown" %}
+                                From {{ tender_value_low }}
+                            {% elif tender_value_high and tender_value_high != "Unknown" %}
+                                Up to {{ tender_value_high }}
+                            {% else %}
+                                Unknown
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+
+                {% if tender_notice_id %}
+                    <div class="mt-3 inline-flex rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-400">
+                        Notice ID: {{ tender_notice_id }}
+                    </div>
+                {% endif %}
+            {% endif %}
+
+            {% if summary_text %}
+                <p class="mt-4 max-w-5xl text-sm leading-6 text-slate-300">
+                    {{ summary_text|striptags|replace("&nbsp;", " ") }}
+                </p>
+            {% endif %}
+
+            {% if why_text %}
+                <div class="mt-4 rounded-xl border border-slate-800 bg-slate-950 p-4">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Why this matters
+                    </p>
+                    <p class="mt-2 text-sm leading-6 text-slate-300">
+                        {{ why_text|striptags|replace("&nbsp;", " ") }}
+                    </p>
+                </div>
+            {% endif %}
+
+            {% if quality_text %}
+                <div class="mt-4 rounded-xl border border-slate-800 bg-slate-950 p-4">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Quality reason
+                    </p>
+                    <p class="mt-2 text-sm leading-6 text-slate-400">
+                        {{ quality_text|striptags|replace("&nbsp;", " ") }}
+                    </p>
+                </div>
+            {% endif %}
+
+            {% if signal.review_notes %}
+                <div class="mt-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-cyan-300">
+                        Review notes
+                    </p>
+                    <p class="mt-2 text-sm leading-6 text-slate-300">
+                        {{ signal.review_notes }}
+                    </p>
+                </div>
+            {% endif %}
+
+            <div class="mt-5 border-t border-slate-800 pt-4">
+                <form method="POST" action="{{ url_for('signals.update_review_status', signal_id=signal.id) }}"
+                      class="grid gap-3 lg:grid-cols-[180px_1fr_auto]">
+                    <input type="hidden" name="next_url" value="{{ request.full_path }}">
+
+                    <select name="review_status"
+                            class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100">
+                        {% for status in review_status_options %}
+                            <option value="{{ status }}" {% if signal.review_status == status %}selected{% endif %}>
+                                {{ status.title() }}
+                            </option>
+                        {% endfor %}
+                    </select>
+
+                    <input name="review_notes"
+                           placeholder="Add optional review note..."
+                           class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-600">
+
+                    <button class="rounded-lg border border-cyan-500/40 px-3 py-2 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/10">
+                        Update
+                    </button>
+                </form>
+
+                <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                        <span>Source: {{ signal.source or "Unknown" }}</span>
+
+                        {% if source_link %}
+                            <a href="{{ source_link }}" target="_blank" rel="noopener"
+                               class="text-cyan-400 hover:text-cyan-300">
+                                Open source
+                            </a>
+                        {% endif %}
+
+                        {% if pdf_link %}
+                            <a href="{{ pdf_link }}"
+                               target="_blank"
+                               rel="noopener"
+                               download
+                               title="Download judgment PDF"
+                               class="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800">
+                                <span aria-hidden="true">📎</span>
+                                PDF
+                            </a>
+                        {% endif %}
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <a href="{{ url_for('companies.company_detail', company_id=signal.company.id) }}"
+                           class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800">
+                            View detail
+                        </a>
+
+                        <form method="POST" action="{{ url_for('signals.generate_insight', signal_id=signal.id) }}">
+                            <button class="rounded-lg border border-cyan-500/40 px-3 py-2 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/10">
+                                Generate AI insight
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-slate-400">
+            No signals match the selected filters.
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

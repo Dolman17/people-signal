@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}Source Run Detail | PeopleSignal{% endblock %}
+
+{% block content %}
+<div class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <div>
+        <a href="{{ url_for('admin.admin_home') }}" class="text-sm text-cyan-400 hover:text-cyan-300">
+            ← Back to Admin
+        </a>
+
+        <h1 class="mt-3 text-3xl font-bold">Source Run Detail</h1>
+        <p class="mt-2 text-slate-400">
+            Review source run activity, linked signals and errors.
+        </p>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-3">
+        {% if matching_signals|length > 0 %}
+            <form method="POST" action="{{ url_for('admin.revert_source_run', run_id=run.id) }}">
+                <button onclick="return confirm('Revert this source run? This will delete only signals created by this run and their related AI insights. Companies and the source run log will be kept.')"
+                        class="rounded-lg border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10">
+                    Revert this run
+                </button>
+            </form>
+        {% endif %}
+
+        {% if run.status == "completed" %}
+            <span class="rounded-full bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-300">
+                completed
+            </span>
+        {% elif run.status == "failed" %}
+            <span class="rounded-full bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-300">
+                failed
+            </span>
+        {% elif run.status == "submitted" %}
+            <span class="rounded-full bg-yellow-500/10 px-4 py-2 text-sm font-semibold text-yellow-300">
+                submitted
+            </span>
+        {% else %}
+            <span class="rounded-full bg-yellow-500/10 px-4 py-2 text-sm font-semibold text-yellow-300">
+                {{ run.status }}
+            </span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="mb-6 rounded-2xl border border-slate-800 bg-slate-900 p-2">
+    <div class="flex flex-wrap gap-2">
+        <button type="button"
+                data-run-tab-button="summary"
+                class="run-tab-button rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950">
+            Summary
+        </button>
+
+        <button type="button"
+                data-run-tab-button="signals"
+                class="run-tab-button rounded-xl px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800">
+            Signals
+            <span class="ml-2 rounded-full bg-slate-800 px-2 py-0.5 text-xs">
+                {{ matching_signals|length }}
+            </span>
+        </button>
+
+        <button type="button"
+                data-run-tab-button="errors"
+                class="run-tab-button rounded-xl px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800">
+            Errors
+            {% if run.error_message %}
+                <span class="ml-2 rounded-full bg-red-500/20 px-2 py-0.5 text-xs text-red-300">
+                    1
+                </span>
+            {% else %}
+                <span class="ml-2 rounded-full bg-slate-800 px-2 py-0.5 text-xs">
+                    0
+                </span>
+            {% endif %}
+        </button>
+    </div>
+</div>
+
+<section id="run-tab-summary"
+         data-run-tab-panel="summary"
+         class="run-tab-panel space-y-6">
+    <section class="grid gap-4 md:grid-cols-4">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <p class="text-sm text-slate-400">Source</p>
+            <p class="mt-2 break-words text-xl font-bold">{{ run.source_name }}</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <p class="text-sm text-slate-400">Records found</p>
+            <p class="mt-2 text-3xl font-bold">{{ run.records_found }}</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <p class="text-sm text-slate-400">Signals created</p>
+            <p class="mt-2 text-3xl font-bold">{{ run.signals_created }}</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <p class="text-sm text-slate-400">Linked signals now</p>
+            <p class="mt-2 text-3xl font-bold">{{ matching_signals|length }}</p>
+        </div>
+    </section>
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+        <h2 class="font-semibold text-white">Timing</h2>
+
+        <div class="mt-4 grid gap-4 md:grid-cols-2">
+            <div class="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Started</p>
+                <p class="mt-2 text-sm text-slate-300">{{ run.started_at }}</p>
+            </div>
+
+            <div class="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Finished</p>
+                <p class="mt-2 text-sm text-slate-300">{{ run.finished_at or "-" }}</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+        <h2 class="font-semibold text-white">Run actions</h2>
+        <p class="mt-2 text-sm leading-6 text-slate-400">
+            Use revert only for test or poor-quality runs. Reverting removes linked signals and related AI insights,
+            but keeps the companies and the source run log.
+        </p>
+
+        <div class="mt-5 flex flex-wrap gap-3">
+            <a href="{{ url_for('admin.admin_home') }}"
+               class="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800">
+                Back to Admin
+            </a>
+
+            {% if matching_signals|length > 0 %}
+                <form method="POST" action="{{ url_for('admin.revert_source_run', run_id=run.id) }}">
+                    <button onclick="return confirm('Revert this source run? This will delete only signals created by this run and their related AI insights. Companies and the source run log will be kept.')"
+                            class="rounded-lg border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10">
+                        Revert this run
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </section>
+</section>
+
+<section id="run-tab-signals"
+         data-run-tab-panel="signals"
+         class="run-tab-panel hidden rounded-2xl border border-slate-800 bg-slate-900">
+    <div class="border-b border-slate-800 px-6 py-4">
+        <h2 class="font-semibold">Signals created by this run</h2>
+        <p class="mt-1 text-sm text-slate-400">
+            Triage imported records and decide whether each one is worth pursuing.
+        </p>
+    </div>
+
+    <div class="divide-y divide-slate-800">
+        {% for signal in matching_signals %}
+
+            {% set raw_text = signal.raw_text or "" %}
+
+            {% set pdf_parts = raw_text.split("PDF link:") %}
+            {% set text_before_pdf = pdf_parts[0].strip() %}
+            {% set pdf_and_after = pdf_parts[1].strip() if pdf_parts|length > 1 else "" %}
+
+            {% if pdf_and_after %}
+                {% set judgment_parts = pdf_and_after.split("Judgment excerpt:") %}
+                {% set pdf_link = judgment_parts[0].strip() %}
+            {% else %}
+                {% set pdf_link = "" %}
+            {% endif %}
+
+            {% set source_parts = text_before_pdf.split("Source link:") %}
+            {% set text_without_link = source_parts[0].strip() %}
+            {% set source_link = source_parts[1].strip() if source_parts|length > 1 else "" %}
+
+            {% set quality_parts = text_without_link.split("Quality reason:") %}
+            {% set text_without_quality = quality_parts[0].strip() %}
+            {% set quality_text = quality_parts[1].strip() if quality_parts|length > 1 else "" %}
+
+            {% set why_parts = text_without_quality.split("Why this matters:") %}
+            {% set summary_text = why_parts[0].strip() %}
+            {% set why_text = why_parts[1].strip() if why_parts|length > 1 else "" %}
+
+            <div class="px-6 py-5">
+                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                        <a href="{{ url_for('companies.company_detail', company_id=signal.company.id) }}"
+                           class="text-sm font-semibold text-cyan-400 hover:text-cyan-300">
+                            {% if signal.company.name == "Unknown Care Organisation" %}
+                                Organisation not identified
+                            {% else %}
+                                {{ signal.company.name }}
+                            {% endif %}
+                        </a>
+
+                        <h3 class="mt-2 font-semibold text-white">
+                            {{ signal.title|striptags|replace("&nbsp;", " ") if signal.title else "Untitled signal" }}
+                        </h3>
+
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            {% if signal.review_status == "new" %}
+                                <span class="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-300">New</span>
+                            {% elif signal.review_status == "reviewed" %}
+                                <span class="rounded-full bg-slate-700 px-3 py-1 text-xs font-medium text-slate-200">Reviewed</span>
+                            {% elif signal.review_status == "saved" %}
+                                <span class="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">Saved</span>
+                            {% elif signal.review_status == "rejected" %}
+                                <span class="rounded-full bg-red-500/10 px-3 py-1 text-xs font-medium text-red-300">Rejected</span>
+                            {% elif signal.review_status == "contacted" %}
+                                <span class="rounded-full bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-300">Contacted</span>
+                            {% else %}
+                                <span class="rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300">
+                                    {{ signal.review_status or "new" }}
+                                </span>
+                            {% endif %}
+
+                            <span class="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                                {{ signal.signal_type.replace("_", " ") if signal.signal_type else "unknown signal" }}
+                            </span>
+
+                            <span class="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                                Confidence {{ signal.confidence_score or 0 }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        {% if source_link %}
+                            <a href="{{ source_link }}" target="_blank" rel="noopener"
+                               class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800">
+                                Open source
+                            </a>
+                        {% endif %}
+
+                        {% if pdf_link %}
+                            <a href="{{ pdf_link }}"
+                               target="_blank"
+                               rel="noopener"
+                               download
+                               title="Download judgment PDF"
+                               class="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800">
+                                <span aria-hidden="true">📎</span>
+                                PDF
+                            </a>
+                        {% endif %}
+
+                        <a href="{{ url_for('companies.company_detail', company_id=signal.company.id) }}"
+                           class="rounded-lg border border-cyan-500/40 px-3 py-2 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/10">
+                            View company
+                        </a>
+                    </div>
+                </div>
+
+                {% if summary_text %}
+                    <p class="mt-4 text-sm leading-6 text-slate-300">
+                        {{ summary_text|striptags|replace("&nbsp;", " ") }}
+                    </p>
+                {% endif %}
+
+                {% if why_text %}
+                    <div class="mt-4 rounded-xl border border-slate-800 bg-slate-950 p-4">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Why this matters
+                        </p>
+                        <p class="mt-2 text-sm leading-6 text-slate-300">
+                            {{ why_text|striptags|replace("&nbsp;", " ") }}
+                        </p>
+                    </div>
+                {% endif %}
+
+                {% if quality_text %}
+                    <div class="mt-4 rounded-xl border border-slate-800 bg-slate-950 p-4">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Quality reason
+                        </p>
+                        <p class="mt-2 text-sm leading-6 text-slate-400">
+                            {{ quality_text|striptags|replace("&nbsp;", " ") }}
+                        </p>
+                    </div>
+                {% endif %}
+
+                {% if signal.review_notes %}
+                    <div class="mt-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-cyan-300">
+                            Review notes
+                        </p>
+                        <p class="mt-2 text-sm leading-6 text-slate-300">
+                            {{ signal.review_notes }}
+                        </p>
+                    </div>
+                {% endif %}
+
+                <form method="POST" action="{{ url_for('signals.update_review_status', signal_id=signal.id) }}"
+                      class="mt-5 grid gap-3 border-t border-slate-800 pt-4 lg:grid-cols-[180px_1fr_auto]">
+                    <input type="hidden" name="next_url" value="{{ request.full_path }}">
+
+                    <select name="review_status"
+                            class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100">
+                        {% for status in ["new", "reviewed", "saved", "rejected", "contacted"] %}
+                            <option value="{{ status }}" {% if signal.review_status == status %}selected{% endif %}>
+                                {{ status.title() }}
+                            </option>
+                        {% endfor %}
+                    </select>
+
+                    <input name="review_notes"
+                           placeholder="Add optional review note..."
+                           class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-600">
+
+                    <button class="rounded-lg border border-cyan-500/40 px-3 py-2 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/10">
+                        Update
+                    </button>
+                </form>
+            </div>
+        {% else %}
+            <p class="px-6 py-8 text-sm text-slate-400">
+                No linked signals found for this run. This may be an older run, a failed run, or a run that has already been reverted.
+            </p>
+        {% endfor %}
+    </div>
+</section>
+
+<section id="run-tab-errors"
+         data-run-tab-panel="errors"
+         class="run-tab-panel hidden rounded-2xl border border-slate-800 bg-slate-900">
+    <div class="border-b border-slate-800 px-6 py-4">
+        <h2 class="font-semibold">Errors</h2>
+        <p class="mt-1 text-sm text-slate-400">
+            Error output or failure details for this source run.
+        </p>
+    </div>
+
+    <div class="p-6">
+        {% if run.error_message %}
+            <div class="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-red-300">Error message</p>
+                <p class="mt-2 whitespace-pre-wrap text-sm leading-6 text-red-200">{{ run.error_message }}</p>
+            </div>
+        {% else %}
+            <div class="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                <p class="text-sm text-slate-400">
+                    No error message recorded for this run.
+                </p>
+            </div>
+        {% endif %}
+    </div>
+</section>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const buttons = document.querySelectorAll("[data-run-tab-button]");
+        const panels = document.querySelectorAll("[data-run-tab-panel]");
+
+        function activateTab(tabName) {
+            buttons.forEach((button) => {
+                const isActive = button.dataset.runTabButton === tabName;
+
+                button.classList.toggle("bg-cyan-500", isActive);
+                button.classList.toggle("text-slate-950", isActive);
+                button.classList.toggle("text-slate-300", !isActive);
+                button.classList.toggle("hover:bg-slate-800", !isActive);
+            });
+
+            panels.forEach((panel) => {
+                panel.classList.toggle("hidden", panel.dataset.runTabPanel !== tabName);
+            });
+
+            window.localStorage.setItem("peopleSignalRunDetailTab", tabName);
+        }
+
+        buttons.forEach((button) => {
+            button.addEventListener("click", function () {
+                activateTab(button.dataset.runTabButton);
+            });
+        });
+
+        const savedTab = window.localStorage.getItem("peopleSignalRunDetailTab");
+
+        if (savedTab && document.querySelector(`[data-run-tab-button="${savedTab}"]`)) {
+            activateTab(savedTab);
+        }
+    });
+</script>
+{% endblock %}

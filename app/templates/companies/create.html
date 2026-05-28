@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Add Company | PeopleSignal{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl">
+    <h1 class="text-3xl font-bold">Add company</h1>
+
+    <form method="POST" class="mt-6 space-y-4 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+        {% for field, label in [
+            ("name", "Company name"),
+            ("sector", "Sector"),
+            ("website", "Website"),
+            ("city", "City"),
+            ("region", "Region"),
+            ("company_size", "Company size")
+        ] %}
+            <div>
+                <label class="text-sm font-medium text-slate-300">{{ label }}</label>
+                <input name="{{ field }}"
+                       class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
+            </div>
+        {% endfor %}
+
+        <button class="rounded-lg bg-cyan-500 px-4 py-2 font-semibold text-slate-950 hover:bg-cyan-400">
+            Save company
+        </button>
+    </form>
+</div>
+{% endblock %}

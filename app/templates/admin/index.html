@@ -1,0 +1,439 @@
+{% extends "base.html" %}
+
+{% block title %}Admin | PeopleSignal{% endblock %}
+
+{% block content %}
+<div class="mb-8 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+    <div>
+        <h1 class="text-3xl font-bold">Admin</h1>
+        <p class="mt-2 text-slate-400">Platform overview, ingestion, cleanup and system tools.</p>
+    </div>
+
+    <a href="{{ url_for('admin.merge_companies') }}"
+       class="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800">
+        Merge companies
+    </a>
+</div>
+
+<div class="mb-6 rounded-2xl border border-slate-800 bg-slate-900 p-2">
+    <div class="flex flex-wrap gap-2">
+        <button type="button"
+                data-admin-tab-button="overview"
+                class="admin-tab-button rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950">
+            Overview
+        </button>
+
+        <button type="button"
+                data-admin-tab-button="ingestion"
+                class="admin-tab-button rounded-xl px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800">
+            Ingestion
+        </button>
+
+        <button type="button"
+                data-admin-tab-button="ai"
+                class="admin-tab-button rounded-xl px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800">
+            AI batches
+        </button>
+
+        <button type="button"
+                data-admin-tab-button="cleanup"
+                class="admin-tab-button rounded-xl px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800">
+            Cleanup
+        </button>
+
+        <button type="button"
+                data-admin-tab-button="runs"
+                class="admin-tab-button rounded-xl px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800">
+            Source runs
+        </button>
+    </div>
+</div>
+
+<section id="admin-tab-overview"
+         data-admin-tab-panel="overview"
+         class="admin-tab-panel">
+    <div class="grid gap-4 md:grid-cols-3">
+        {% for label, value in stats.items() %}
+            <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+                <p class="text-sm capitalize text-slate-400">{{ label.replace("_", " ") }}</p>
+                <p class="mt-2 text-3xl font-bold">{{ value }}</p>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+
+<section id="admin-tab-ingestion"
+         data-admin-tab-panel="ingestion"
+         class="admin-tab-panel hidden">
+    <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-7">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 class="font-semibold text-white">Seed demo data</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-400">
+                Create test companies and signals for development and layout checks.
+            </p>
+
+            <form method="POST" action="{{ url_for('admin.seed_demo') }}" class="mt-5">
+                <button class="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800">
+                    Seed demo data
+                </button>
+            </form>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 class="font-semibold text-white">Google News</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-400">
+                Runs the Google News RSS scanner, resolves publisher URLs, extracts company names and creates trigger signals.
+            </p>
+
+            <form method="POST" action="{{ url_for('admin.run_google_news') }}" class="mt-5">
+                <button class="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400">
+                    Run Google News
+                </button>
+            </form>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 class="font-semibold text-white">Companies House</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-400">
+                Pulls care-sector company data, officer changes and filing-history signals.
+            </p>
+
+            <form method="POST" action="{{ url_for('admin.run_companies_house') }}" class="mt-5">
+                <button class="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400">
+                    Run Companies House
+                </button>
+            </form>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 class="font-semibold text-white">Employment Tribunals</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-400">
+                Searches GOV.UK Employment Tribunal decisions for care-sector dismissal,
+                discrimination, wage and whistleblowing signals.
+            </p>
+
+            <form method="POST" action="{{ url_for('admin.run_employment_tribunals') }}" class="mt-5">
+                <button class="rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-400">
+                    Run Employment Tribunals
+                </button>
+            </form>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 class="font-semibold text-white">Sector RSS</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-400">
+                Pulls care-sector RSS feeds and creates signals from regulatory,
+                workforce, funding and reputational trigger stories.
+            </p>
+
+            <form method="POST" action="{{ url_for('admin.run_sector_rss') }}" class="mt-5">
+                <button class="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-amber-400">
+                    Run Sector RSS
+                </button>
+            </form>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 class="font-semibold text-white">LA Tenders</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-400">
+                Searches Contracts Finder for local authority HR, employment law,
+                workforce planning, training and social-care recruitment opportunities.
+            </p>
+
+            <form method="POST" action="{{ url_for('admin.run_local_authority_tenders') }}" class="mt-5">
+                <button class="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-400">
+                    Run LA Tenders
+                </button>
+            </form>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 class="font-semibold text-white">Find a Tender</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-400">
+                Uses Find a Tender open data ZIP/XML files to find higher-value HR,
+                employment law, workforce, training and public-sector procurement notices.
+            </p>
+
+            <form method="POST" action="{{ url_for('admin.run_find_tender_open_data') }}" class="mt-5">
+                <button class="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-teal-400">
+                    Run Find a Tender
+                </button>
+            </form>
+        </div>
+    </div>
+</section>
+
+<section id="admin-tab-ai"
+         data-admin-tab-panel="ai"
+         class="admin-tab-panel hidden">
+    <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+                <h2 class="font-semibold text-white">Discounted AI insight batch</h2>
+                <p class="mt-2 text-sm leading-6 text-slate-400">
+                    Submit signals without insights to the discounted OpenAI Batch API.
+                    This is cheaper but asynchronous and may take up to 24 hours to complete.
+                </p>
+            </div>
+
+            <form method="POST" action="{{ url_for('admin.run_ai_insights') }}"
+                  class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div>
+                    <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Max signals
+                    </label>
+                    <input type="number"
+                           name="max_signals"
+                           min="1"
+                           max="100"
+                           value="10"
+                           class="mt-1 w-32 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100">
+                </div>
+
+                <button onclick="return confirm('Submit these signals to the OpenAI Batch API? Results will need to be refreshed/imported later.')"
+                        class="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400">
+                    Submit AI batch
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <section class="mt-8 rounded-2xl border border-slate-800 bg-slate-900">
+        <div class="border-b border-slate-800 px-6 py-4">
+            <h2 class="font-semibold">Recent AI batch jobs</h2>
+            <p class="mt-1 text-sm text-slate-400">
+                Discounted OpenAI Batch API jobs. Refresh status, then import once completed.
+            </p>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-slate-800 text-slate-300">
+                    <tr>
+                        <th class="px-6 py-3">Batch ID</th>
+                        <th class="px-6 py-3">Status</th>
+                        <th class="px-6 py-3">Requested</th>
+                        <th class="px-6 py-3">Processed</th>
+                        <th class="px-6 py-3">Insights</th>
+                        <th class="px-6 py-3">Created</th>
+                        <th class="px-6 py-3">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody class="divide-y divide-slate-800">
+                    {% for job in recent_ai_batches %}
+                        <tr class="hover:bg-slate-800/60">
+                            <td class="px-6 py-4 font-mono text-xs text-slate-300">
+                                {{ job.openai_batch_id }}
+                            </td>
+
+                            <td class="px-6 py-4">
+                                {% if job.status in ["completed", "imported"] %}
+                                    <span class="rounded-full bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
+                                        {{ job.status }}
+                                    </span>
+                                {% elif job.status in ["failed", "expired", "cancelled"] %}
+                                    <span class="rounded-full bg-red-500/10 px-3 py-1 text-xs text-red-300">
+                                        {{ job.status }}
+                                    </span>
+                                {% else %}
+                                    <span class="rounded-full bg-yellow-500/10 px-3 py-1 text-xs text-yellow-300">
+                                        {{ job.status }}
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <td class="px-6 py-4 text-slate-300">{{ job.requested_count }}</td>
+                            <td class="px-6 py-4 text-slate-300">{{ job.processed_count }}</td>
+                            <td class="px-6 py-4 text-slate-300">{{ job.insights_created }}</td>
+                            <td class="px-6 py-4 text-slate-400">{{ job.created_at }}</td>
+
+                            <td class="px-6 py-4">
+                                <div class="flex flex-wrap gap-2">
+                                    <form method="POST" action="{{ url_for('admin.refresh_ai_batch', job_id=job.id) }}">
+                                        <button class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800">
+                                            Refresh
+                                        </button>
+                                    </form>
+
+                                    <form method="POST" action="{{ url_for('admin.import_ai_batch', job_id=job.id) }}">
+                                        <button class="rounded-lg border border-cyan-500/40 px-3 py-2 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/10">
+                                            Import
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="px-6 py-8 text-slate-400">
+                                No AI batch jobs yet.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+
+<section id="admin-tab-cleanup"
+         data-admin-tab-panel="cleanup"
+         class="admin-tab-panel hidden rounded-2xl border border-slate-800 bg-slate-900">
+    <div class="border-b border-slate-800 px-6 py-4">
+        <h2 class="font-semibold">Cleanup tools</h2>
+        <p class="mt-1 text-sm text-slate-400">
+            Remove test/imported data safely while preserving source run logs.
+        </p>
+    </div>
+
+    <div class="grid gap-4 p-6 md:grid-cols-3">
+        <div class="rounded-xl border border-slate-800 bg-slate-950 p-5">
+            <h3 class="font-semibold text-white">Google News test data</h3>
+            <p class="mt-2 text-sm leading-6 text-slate-400">
+                Deletes signals imported from Google News RSS and any related AI insights.
+                Companies are preserved for now.
+            </p>
+
+            <form method="POST" action="{{ url_for('admin.cleanup_google_news') }}" class="mt-4">
+                <button onclick="return confirm('Delete all Google News RSS signals and related AI insights?')"
+                        class="rounded-lg border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10">
+                    Delete Google News signals
+                </button>
+            </form>
+        </div>
+
+        <div class="rounded-xl border border-slate-800 bg-slate-950 p-5">
+            <h3 class="font-semibold text-white">Demo seed data</h3>
+            <p class="mt-2 text-sm leading-6 text-slate-400">
+                Deletes demo seed companies, demo signals and related AI insights.
+                Manual and Google News data are not affected.
+            </p>
+
+            <form method="POST" action="{{ url_for('admin.cleanup_demo_data') }}" class="mt-4">
+                <button onclick="return confirm('Delete demo companies, demo signals and related AI insights?')"
+                        class="rounded-lg border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10">
+                    Delete demo data
+                </button>
+            </form>
+        </div>
+
+        <div class="rounded-xl border border-slate-800 bg-slate-950 p-5">
+            <h3 class="font-semibold text-white">Orphan companies</h3>
+            <p class="mt-2 text-sm leading-6 text-slate-400">
+                Deletes companies that no longer have any linked signals. Useful after reverting source runs during testing.
+                Users, organisations, signals, insights and source logs are not affected.
+            </p>
+
+            <form method="POST" action="{{ url_for('admin.cleanup_orphan_companies') }}" class="mt-4">
+                <button onclick="return confirm('Delete all companies that have no linked signals?')"
+                        class="rounded-lg border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10">
+                    Delete orphan companies
+                </button>
+            </form>
+        </div>
+    </div>
+</section>
+
+<section id="admin-tab-runs"
+         data-admin-tab-panel="runs"
+         class="admin-tab-panel hidden rounded-2xl border border-slate-800 bg-slate-900">
+    <div class="border-b border-slate-800 px-6 py-4">
+        <h2 class="font-semibold">Recent source runs</h2>
+        <p class="mt-1 text-sm text-slate-400">Scraper, importer, seed and cleanup activity.</p>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+            <thead class="bg-slate-800 text-slate-300">
+                <tr>
+                    <th class="px-6 py-3">Source</th>
+                    <th class="px-6 py-3">Status</th>
+                    <th class="px-6 py-3">Records found</th>
+                    <th class="px-6 py-3">Signals created</th>
+                    <th class="px-6 py-3">Started</th>
+                    <th class="px-6 py-3">Finished</th>
+                    <th class="px-6 py-3">Error</th>
+                </tr>
+            </thead>
+
+            <tbody class="divide-y divide-slate-800">
+                {% for run in recent_source_runs %}
+                    <tr class="hover:bg-slate-800/60">
+                        <td class="px-6 py-4 font-medium">
+                            <a href="{{ url_for('admin.source_run_detail', run_id=run.id) }}"
+                               class="text-cyan-400 hover:text-cyan-300">
+                                {{ run.source_name }}
+                            </a>
+                        </td>
+
+                        <td class="px-6 py-4">
+                            {% if run.status == "completed" %}
+                                <span class="rounded-full bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
+                                    completed
+                                </span>
+                            {% elif run.status == "failed" %}
+                                <span class="rounded-full bg-red-500/10 px-3 py-1 text-xs text-red-300">
+                                    failed
+                                </span>
+                            {% else %}
+                                <span class="rounded-full bg-yellow-500/10 px-3 py-1 text-xs text-yellow-300">
+                                    {{ run.status }}
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-6 py-4 text-slate-300">{{ run.records_found }}</td>
+                        <td class="px-6 py-4 text-slate-300">{{ run.signals_created }}</td>
+                        <td class="px-6 py-4 text-slate-400">{{ run.started_at }}</td>
+                        <td class="px-6 py-4 text-slate-400">{{ run.finished_at or "-" }}</td>
+                        <td class="px-6 py-4 text-slate-400">{{ run.error_message or "-" }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-8 text-slate-400">
+                            No source runs yet.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const buttons = document.querySelectorAll("[data-admin-tab-button]");
+        const panels = document.querySelectorAll("[data-admin-tab-panel]");
+
+        function activateTab(tabName) {
+            buttons.forEach((button) => {
+                const isActive = button.dataset.adminTabButton === tabName;
+
+                button.classList.toggle("bg-cyan-500", isActive);
+                button.classList.toggle("text-slate-950", isActive);
+                button.classList.toggle("text-slate-300", !isActive);
+                button.classList.toggle("hover:bg-slate-800", !isActive);
+            });
+
+            panels.forEach((panel) => {
+                panel.classList.toggle("hidden", panel.dataset.adminTabPanel !== tabName);
+            });
+
+            window.localStorage.setItem("peopleSignalAdminTab", tabName);
+        }
+
+        buttons.forEach((button) => {
+            button.addEventListener("click", function () {
+                activateTab(button.dataset.adminTabButton);
+            });
+        });
+
+        const savedTab = window.localStorage.getItem("peopleSignalAdminTab");
+
+        if (savedTab && document.querySelector(`[data-admin-tab-button="${savedTab}"]`)) {
+            activateTab(savedTab);
+        }
+    });
+</script>
+{% endblock %}
