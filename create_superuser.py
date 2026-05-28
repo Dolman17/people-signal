@@ -1,63 +1,78 @@
+import os
 from getpass import getpass
 
 from werkzeug.security import generate_password_hash
 
 from app import create_app
 from app.extensions import db
-from app.models import Organisation, User
+from app.models import User
 
 
-app = create_app()
+def get_field_names(model):
+    return {column.name for column in model.__table__.columns}
 
 
-def create_superuser():
+def main():
+    app = create_app()
+
     with app.app_context():
-        print("Create PeopleSignal superuser")
-        print("-" * 35)
+        fields = get_field_names(User)
 
-        organisation_name = input("Organisation name: ").strip()
         email = input("Email: ").strip().lower()
+        name = input("Name: ").strip()
         password = getpass("Password: ").strip()
-        confirm_password = getpass("Confirm password: ").strip()
 
-        if not organisation_name or not email or not password:
-            print("Organisation, email and password are required.")
-            return
+        if not email:
+            raise ValueError("Email is required.")
 
-        if password != confirm_password:
-            print("Passwords do not match.")
-            return
+        if not password:
+            raise ValueError("Password is required.")
 
-        existing_user = User.query.filter_by(email=email).first()
+        user = User.query.filter_by(email=email).first()
 
-        if existing_user:
-            existing_user.role = "superuser"
-            existing_user.password_hash = generate_password_hash(password)
+        if user:
+            print(f"Existing user found: {email}")
+        else:
+            user = User()
+            db.session.add(user)
+            print(f"Creating new user: {email}")
 
-            db.session.commit()
+        if "email" in fields:
+            user.email = email
 
-            print(f"Existing user updated to superuser: {email}")
-            return
+        if "name" in fields:
+            user.name = name
 
-        organisation = Organisation.query.filter_by(name=organisation_name).first()
+        if "full_name" in fields:
+            user.full_name = name
 
-        if not organisation:
-            organisation = Organisation(name=organisation_name)
-            db.session.add(organisation)
-            db.session.flush()
+        if "password_hash" in fields:
+            user.password_hash = generate_password_hash(password)
+        elif "password" in fields:
+            user.password = generate_password_hash(password)
+        else:
+            raise ValueError("Could not find password_hash or password field on User model.")
 
-        user = User(
-            organisation_id=organisation.id,
-            email=email,
-            password_hash=generate_password_hash(password),
-            role="superuser"
-        )
+        if "role" in fields:
+            user.role = "superuser"
 
-        db.session.add(user)
+        if "admin_level" in fields:
+            user.admin_level = "superuser"
+
+        if "is_admin" in fields:
+            user.is_admin = True
+
+        if "is_superuser" in fields:
+            user.is_superuser = True
+
+        if "is_active" in fields:
+            user.is_active = True
+
         db.session.commit()
 
-        print(f"Superuser created: {email}")
+        print("Superuser created/updated successfully.")
+        print(f"Email: {email}")
 
 
 if __name__ == "__main__":
-    create_superuser()
+    main()
