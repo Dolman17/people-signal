@@ -18,7 +18,6 @@ JOB_MAP = {
         "source_name": "google_news",
         "runner": lambda source_run_id: ingest_google_news_signals(
             source_run_id=source_run_id,
-            max_items=10,
         ),
     },
     "companies_house": {
