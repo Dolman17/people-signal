@@ -202,6 +202,62 @@ class AIBatchJob(db.Model):
     )
 
 
+class IngestionJob(db.Model):
+    __tablename__ = "ingestion_jobs"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    job_name = db.Column(
+        db.String(100),
+        nullable=False
+    )
+
+    status = db.Column(
+        db.String(50),
+        default="pending",
+        nullable=False
+    )
+
+    requested_by_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+        nullable=True
+    )
+
+    source_run_id = db.Column(
+        db.Integer,
+        db.ForeignKey("source_run_logs.id"),
+        nullable=True
+    )
+
+    error_message = db.Column(
+        db.Text
+    )
+
+    created_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow
+    )
+
+    started_at = db.Column(
+        db.DateTime
+    )
+
+    finished_at = db.Column(
+        db.DateTime
+    )
+
+    requested_by = db.relationship(
+        "User",
+        backref="ingestion_jobs"
+    )
+
+    source_run = db.relationship(
+        "SourceRunLog",
+        backref="ingestion_jobs"
+    )
+
+
 class LeadSignal(db.Model):
     __tablename__ = "lead_signals"
 
