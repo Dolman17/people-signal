@@ -31,12 +31,14 @@ def create_app():
     from app.blueprints.companies.routes import companies_bp
     from app.blueprints.signals.routes import signals_bp
     from app.blueprints.admin.routes import admin_bp
+    from app.blueprints.admin.job_routes import admin_jobs_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(companies_bp)
     app.register_blueprint(signals_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(admin_jobs_bp)
 
     @app.route("/")
     def index():
