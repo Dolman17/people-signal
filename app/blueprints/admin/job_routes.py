@@ -1,8 +1,7 @@
-from flask import Blueprint, redirect, url_for, flash, request
+from flask import Blueprint, redirect, url_for, flash
 from flask_login import login_required, current_user
 
-from app.extensions import db
-from app.models import IngestionJob
+from app.services.ingestion_queue_service import queue_ingestion_job
 
 
 admin_jobs_bp = Blueprint(
@@ -20,46 +19,30 @@ def user_is_admin():
 
 
 def create_google_news_job():
-    existing_job = (
-        IngestionJob.query
-        .filter_by(job_name="google_news")
-        .filter(IngestionJob.status.in_(["pending", "running"]))
-        .order_by(IngestionJob.created_at.desc())
-        .first()
-    )
-
-    if existing_job:
-        flash(
-            f"Google News ingestion is already {existing_job.status}. Job ID: {existing_job.id}.",
-            "info",
-        )
-        return redirect(url_for("admin.admin_home"))
-
-    job = IngestionJob(
+    result = queue_ingestion_job(
         job_name="google_news",
-        status="pending",
         requested_by_user_id=current_user.id,
     )
 
-    db.session.add(job)
-    db.session.commit()
+    job = result["job"]
 
-    flash(
-        f"Google News ingestion queued. Job ID: {job.id}. The Railway worker will process it shortly.",
-        "success",
-    )
+    if result["created"]:
+        flash(
+            f"Google News ingestion queued. Job ID: {job.id}. The Railway worker will process it shortly.",
+            "success",
+        )
+    else:
+        flash(
+            f"Google News ingestion is already {job.status}. Job ID: {job.id}.",
+            "info",
+        )
 
     return redirect(url_for("admin.admin_home"))
 
 
-@admin_jobs_bp.before_app_request
-def intercept_google_news_direct_run():
-    if request.path != "/admin/run-google-news" or request.method != "POST":
-        return None
-
-    if not current_user.is_authenticated:
-        return None
-
+@admin_jobs_bp.route("/run-google-news", methods=["POST"])
+@login_required
+def run_google_news_queued():
     if not user_is_admin():
         return "Forbidden", 403
 
