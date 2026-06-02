@@ -5,6 +5,7 @@ from sqlalchemy import or_
 from app.extensions import db
 from app.models import Company, LeadSignal, AIInsight
 from app.services.ai_service import generate_ai_insight_for_signal
+from app.services.the_hive_export_service import send_signal_to_the_hive, TheHiveExportError
 
 signals_bp = Blueprint(
     "signals",
@@ -217,6 +218,34 @@ def generate_insight(signal_id):
     flash("AI insight generated successfully.", "success")
 
     return redirect(url_for("companies.company_detail", company_id=signal.company_id))
+
+
+@signals_bp.route("/<int:signal_id>/send-to-hive", methods=["POST"])
+@login_required
+def send_to_hive(signal_id):
+    signal = LeadSignal.query.get_or_404(signal_id)
+    next_url = request.form.get("next_url") or url_for("signals.list_signals")
+
+    try:
+        result = send_signal_to_the_hive(signal)
+
+        if result.get("created") is False:
+            flash(
+                f"This signal is already in The Hive as lead ID {result.get('lead_id')}.",
+                "info",
+            )
+        else:
+            flash(
+                f"Signal sent to The Hive successfully. Lead ID: {result.get('lead_id')}.",
+                "success",
+            )
+
+    except TheHiveExportError as e:
+        flash(str(e), "error")
+    except Exception as e:
+        flash(f"Send to The Hive failed: {e}", "error")
+
+    return redirect(next_url)
 
 
 @signals_bp.route("/<int:signal_id>/review", methods=["POST"])
