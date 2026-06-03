@@ -26,6 +26,19 @@ def create_app():
     def load_user(user_id):
         return User.query.get(int(user_id))
 
+    @app.context_processor
+    def inject_ingestion_profiles():
+        try:
+            from app.services.ingestion_profile_service import get_active_ingestion_profiles
+
+            return {
+                "active_ingestion_profiles": get_active_ingestion_profiles()
+            }
+        except Exception:
+            return {
+                "active_ingestion_profiles": []
+            }
+
     from app.blueprints.auth.routes import auth_bp
     from app.blueprints.dashboard.routes import dashboard_bp
     from app.blueprints.companies.routes import companies_bp
