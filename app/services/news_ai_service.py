@@ -4,6 +4,8 @@ import re
 
 from openai import OpenAI
 
+from app.services.ingestion_profile_service import parse_terms
+
 
 VALID_SIGNAL_TYPES = {
     "leadership_change",
@@ -12,7 +14,6 @@ VALID_SIGNAL_TYPES = {
     "negative_publicity",
     "restructuring_signal",
 }
-
 
 HIGH_VALUE_TRIGGER_TERMS = [
     "cqc",
@@ -57,7 +58,6 @@ HIGH_VALUE_TRIGGER_TERMS = [
     "registered manager",
 ]
 
-
 LOW_VALUE_TRIGGER_TERMS = [
     "charity",
     "fundraising",
@@ -81,9 +81,9 @@ LOW_VALUE_TRIGGER_TERMS = [
 ]
 
 
-def clean_company_name_from_title(title):
+def clean_company_name_from_title(title, fallback_name="Unknown Organisation"):
     if not title:
-        return "Unknown Care Organisation"
+        return fallback_name
 
     cleaned = re.sub(r"\s+-\s+.*$", "", title).strip()
 
@@ -117,7 +117,7 @@ def clean_company_name_from_title(title):
     cleaned = re.sub(r"\s+", " ", cleaned).strip(" -:|")
 
     if len(cleaned) < 4:
-        return "Unknown Care Organisation"
+        return fallback_name
 
     return cleaned[:255]
 
@@ -131,15 +131,12 @@ def text_contains_any(text, terms):
     return any(term.lower() in lowered for term in terms)
 
 
-def should_create_signal_fallback(text):
-    """
-    Conservative fallback gate.
+def should_create_signal_fallback(text, high_value_terms=None, low_value_terms=None):
+    high_value_terms = high_value_terms or HIGH_VALUE_TRIGGER_TERMS
+    low_value_terms = low_value_terms or LOW_VALUE_TRIGGER_TERMS
 
-    Create signal only where there is a meaningful commercial HR/risk trigger.
-    """
-
-    has_high_value_trigger = text_contains_any(text, HIGH_VALUE_TRIGGER_TERMS)
-    has_low_value_trigger = text_contains_any(text, LOW_VALUE_TRIGGER_TERMS)
+    has_high_value_trigger = text_contains_any(text, high_value_terms)
+    has_low_value_trigger = text_contains_any(text, low_value_terms)
 
     if has_high_value_trigger:
         return True
@@ -151,13 +148,6 @@ def should_create_signal_fallback(text):
 
 
 def extract_candidate_names(text):
-    """
-    Lightweight candidate extraction before AI.
-
-    Looks for capitalised name-like chunks near care-sector terms.
-    This is not perfect, but gives the AI better options.
-    """
-
     if not text:
         return []
 
@@ -227,9 +217,14 @@ def fallback_extract_news_signal(
     summary,
     default_signal_type,
     default_confidence,
-    article_context=None
+    article_context=None,
+    profile=None,
 ):
     article_context = article_context or {}
+    profile_name = profile.name if profile else "Configured sector"
+    fallback_name = f"Unknown {profile.sector_label} Organisation" if profile else "Unknown Organisation"
+    high_value_terms = parse_terms(profile.high_value_terms) if profile else HIGH_VALUE_TRIGGER_TERMS
+    low_value_terms = parse_terms(profile.low_value_terms) if profile else LOW_VALUE_TRIGGER_TERMS
 
     combined_text = " ".join(
         [
@@ -248,13 +243,17 @@ def fallback_extract_news_signal(
     if candidates:
         company_name = candidates[0]
     else:
-        company_name = clean_company_name_from_title(title)
+        company_name = clean_company_name_from_title(title, fallback_name=fallback_name)
 
-    should_create = should_create_signal_fallback(combined_text)
+    should_create = should_create_signal_fallback(
+        combined_text,
+        high_value_terms=high_value_terms,
+        low_value_terms=low_value_terms,
+    )
 
     reason = (
-        "This news item appears to include a relevant care-sector workforce, "
-        "regulatory, leadership, restructuring or operational risk trigger."
+        f"This news item appears to include a relevant {profile_name} workforce, "
+        "regulatory, leadership, restructuring, employee-relations or operational risk trigger."
     )
 
     return {
@@ -298,15 +297,19 @@ def extract_news_signal_with_ai(
     link,
     default_signal_type,
     default_confidence,
-    article_context=None
+    article_context=None,
+    profile=None,
 ):
-    """
-    Uses AI to clean a Google News RSS item into structured signal data.
-
-    Includes a stricter lead-quality gate so low-value news does not become a signal.
-    """
-
     article_context = article_context or {}
+    profile_name = profile.name if profile else "Configured sector"
+    sector_label = profile.sector_label if profile else "target sector"
+    fallback_name = f"Unknown {sector_label} Organisation"
+    high_value_terms = parse_terms(profile.high_value_terms) if profile else HIGH_VALUE_TRIGGER_TERMS
+    low_value_terms = parse_terms(profile.low_value_terms) if profile else LOW_VALUE_TRIGGER_TERMS
+    profile_prompt = profile.ai_prompt if profile and profile.ai_prompt else (
+        "Track UK organisations that may need HR consultancy support. "
+        "Create signals only where there is meaningful HR, workforce, leadership, regulatory, restructuring or employee-relations pressure."
+    )
 
     combined_text_for_candidates = " ".join(
         [
@@ -330,7 +333,8 @@ def extract_news_signal_with_ai(
             summary,
             default_signal_type,
             default_confidence,
-            article_context=article_context
+            article_context=article_context,
+            profile=profile,
         )
 
     client = OpenAI(api_key=api_key)
@@ -338,43 +342,32 @@ def extract_news_signal_with_ai(
     prompt = f"""
 You are cleaning UK Google News results for an HR risk intelligence platform.
 
-The platform tracks UK care-sector organisations that may need HR consultancy support.
+Active ingestion profile: {profile_name}
+Sector label: {sector_label}
+
+Profile instructions:
+{profile_prompt}
 
 Your tasks:
-1. Identify the actual care provider, care home, supported living provider, operator, charity or organisation involved.
-2. Decide whether this is a commercially useful HR/risk lead signal.
+1. Identify the actual organisation involved.
+2. Decide whether this is a commercially useful HR/risk lead signal for the selected profile.
 3. Classify the signal type.
 
 Only create a signal if the article includes a meaningful trigger likely to create HR, workforce, leadership, regulatory, restructuring or employee-relations pressure.
 
-HIGH-VALUE triggers include:
-- CQC issue, inadequate rating, requires improvement, special measures, warning notice
-- safeguarding concern, abuse, neglect, serious quality concern
-- closure, administration, insolvency, liquidation
-- restructure, merger, acquisition, ownership change, takeover
-- new care service opening, new site, expansion, planning approval where staffing is material
-- significant staffing requirement, staffing crisis, recruitment drive, staff shortage
-- leadership change, registered manager issue, senior manager departure
-- tribunal, legal dispute, whistleblowing, dismissal dispute, union activity
-- serious negative publicity linked to care quality, staffing, leadership or compliance
+HIGH-VALUE trigger terms for this profile include:
+{', '.join(high_value_terms) if high_value_terms else 'No specific terms configured'}
 
-LOW-VALUE items to SKIP:
-- charity walks, fundraising, donations, awareness campaigns
-- awards, celebrations, birthdays, anniversaries
-- general government/statistical reports with no named organisation
-- generic national sector commentary
-- opinion pieces with no specific organisation
-- community-good-news stories
-- articles where no specific organisation can be identified
-- articles that do not suggest likely HR consultancy need
+LOW-VALUE items to SKIP include:
+{', '.join(low_value_terms) if low_value_terms else 'No specific skip terms configured'}
 
 Do NOT use:
 - newspaper/publisher name
 - BBC
 - Google News
-- council name, unless the council is the actual care provider/employer
-- CQC, unless the article is genuinely about CQC as an employer
-- generic phrases like "care home", "residents", "staff" or "unknown"
+- council name, unless the council is the actual employer or organisation in scope
+- regulator name, unless the article is genuinely about that regulator as an employer
+- generic phrases like "staff", "residents", "unknown" or "organisation"
 
 Google News title:
 {title or "No title"}
@@ -427,9 +420,9 @@ should_create_signal
 quality_reason
 
 Rules:
-- company_name should be the actual organisation/care provider/care home name if identifiable.
+- company_name should be the actual organisation most likely to need HR/people support.
 - If several organisations are mentioned, choose the one most likely to need HR/people support.
-- If no organisation is identifiable, use "Unknown Care Organisation".
+- If no organisation is identifiable, use "{fallback_name}".
 - signal_type must be one of the valid signal types.
 - confidence_score must be a number from 1 to 10.
 - confidence_score should be lower if company_name is uncertain.
@@ -473,7 +466,7 @@ Rules:
 
         should_create_signal = normalise_ai_boolean(data.get("should_create_signal"))
 
-        company_name = data.get("company_name") or "Unknown Care Organisation"
+        company_name = data.get("company_name") or fallback_name
 
         generic_names = {
             "BBC",
@@ -485,18 +478,17 @@ Rules:
             "Unknown",
             "News",
             "Unknown Care Organisation",
+            fallback_name,
         }
 
         if company_name.strip() in generic_names:
-            company_name = "Unknown Care Organisation"
+            company_name = fallback_name
             confidence_score = min(confidence_score, 4)
             should_create_signal = False
 
-        # Extra safety gate: obvious low-value items should not be created
-        # unless the AI explicitly found a high-value trigger.
         combined_text = combined_text_for_candidates.lower()
-        has_low_value_trigger = text_contains_any(combined_text, LOW_VALUE_TRIGGER_TERMS)
-        has_high_value_trigger = text_contains_any(combined_text, HIGH_VALUE_TRIGGER_TERMS)
+        has_low_value_trigger = text_contains_any(combined_text, low_value_terms)
+        has_high_value_trigger = text_contains_any(combined_text, high_value_terms)
 
         if has_low_value_trigger and not has_high_value_trigger:
             should_create_signal = False
@@ -519,5 +511,6 @@ Rules:
             summary,
             default_signal_type,
             default_confidence,
-            article_context=article_context
+            article_context=article_context,
+            profile=profile,
         )
