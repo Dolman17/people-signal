@@ -202,6 +202,105 @@ class AIBatchJob(db.Model):
     )
 
 
+class IngestionProfile(db.Model):
+    __tablename__ = "ingestion_profiles"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    name = db.Column(
+        db.String(255),
+        nullable=False
+    )
+
+    slug = db.Column(
+        db.String(120),
+        unique=True,
+        nullable=False
+    )
+
+    sector_label = db.Column(
+        db.String(120),
+        nullable=False,
+        default="Care"
+    )
+
+    description = db.Column(db.Text)
+
+    ai_prompt = db.Column(db.Text)
+
+    high_value_terms = db.Column(db.Text)
+
+    low_value_terms = db.Column(db.Text)
+
+    is_active = db.Column(
+        db.Boolean,
+        default=True
+    )
+
+    is_default = db.Column(
+        db.Boolean,
+        default=False
+    )
+
+    created_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow
+    )
+
+    updated_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
+
+
+class IngestionProfileQuery(db.Model):
+    __tablename__ = "ingestion_profile_queries"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    profile_id = db.Column(
+        db.Integer,
+        db.ForeignKey("ingestion_profiles.id"),
+        nullable=False
+    )
+
+    source_type = db.Column(
+        db.String(100),
+        nullable=False,
+        default="google_news"
+    )
+
+    query = db.Column(db.Text)
+
+    feed_url = db.Column(db.Text)
+
+    signal_type = db.Column(
+        db.String(100),
+        default="negative_publicity"
+    )
+
+    confidence_score = db.Column(
+        db.Float,
+        default=7
+    )
+
+    is_active = db.Column(
+        db.Boolean,
+        default=True
+    )
+
+    created_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow
+    )
+
+    profile = db.relationship(
+        "IngestionProfile",
+        backref="queries"
+    )
+
+
 class IngestionJob(db.Model):
     __tablename__ = "ingestion_jobs"
 
@@ -230,6 +329,14 @@ class IngestionJob(db.Model):
         nullable=True
     )
 
+    profile_id = db.Column(
+        db.Integer,
+        db.ForeignKey("ingestion_profiles.id"),
+        nullable=True
+    )
+
+    job_params = db.Column(db.Text)
+
     error_message = db.Column(
         db.Text
     )
@@ -255,6 +362,11 @@ class IngestionJob(db.Model):
     source_run = db.relationship(
         "SourceRunLog",
         backref="ingestion_jobs"
+    )
+
+    profile = db.relationship(
+        "IngestionProfile",
+        backref="jobs"
     )
 
 
