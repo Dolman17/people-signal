@@ -13,10 +13,13 @@ from app.services.company_match_service import (
 )
 from app.services.google_news_decode_service import decode_google_news_url
 from app.services.news_ai_service import extract_news_signal_with_ai
+from app.services.ingestion_profile_service import (
+    get_profile_or_default,
+    get_profile_queries,
+)
 
 
 GOOGLE_NEWS_SEARCHES = [
-    # Regulatory / CQC risk
     {
         "query": '"care home" "CQC" "inadequate" UK',
         "signal_type": "regulatory_concern",
@@ -37,8 +40,6 @@ GOOGLE_NEWS_SEARCHES = [
         "signal_type": "regulatory_concern",
         "confidence_score": 9,
     },
-
-    # Safeguarding / quality concerns
     {
         "query": '"care home" safeguarding UK',
         "signal_type": "regulatory_concern",
@@ -54,8 +55,6 @@ GOOGLE_NEWS_SEARCHES = [
         "signal_type": "regulatory_concern",
         "confidence_score": 8,
     },
-
-    # Closure / administration / financial distress
     {
         "query": '"care home" closure UK',
         "signal_type": "restructuring_signal",
@@ -76,8 +75,6 @@ GOOGLE_NEWS_SEARCHES = [
         "signal_type": "restructuring_signal",
         "confidence_score": 7,
     },
-
-    # Staffing / workforce pressure
     {
         "query": '"care home" "staff shortage" UK',
         "signal_type": "rapid_hiring",
@@ -98,8 +95,6 @@ GOOGLE_NEWS_SEARCHES = [
         "signal_type": "rapid_hiring",
         "confidence_score": 6,
     },
-
-    # Expansion / new services
     {
         "query": '"new care home" opening UK',
         "signal_type": "rapid_hiring",
@@ -120,8 +115,6 @@ GOOGLE_NEWS_SEARCHES = [
         "signal_type": "rapid_hiring",
         "confidence_score": 6,
     },
-
-    # Leadership / ownership change
     {
         "query": '"care provider" acquisition UK',
         "signal_type": "restructuring_signal",
@@ -137,8 +130,6 @@ GOOGLE_NEWS_SEARCHES = [
         "signal_type": "leadership_change",
         "confidence_score": 7,
     },
-
-    # Legal / ER / employment signals
     {
         "query": '"care provider" "employment tribunal" UK',
         "signal_type": "negative_publicity",
@@ -210,8 +201,8 @@ def choose_best_article_url(entry, raw_summary_html):
     return decode_google_news_url(fallback_link)
 
 
-def find_or_create_company(company_name):
-    company_name = company_name or "Unknown Care Organisation"
+def find_or_create_company(company_name, sector_label="Unknown"):
+    company_name = company_name or f"Unknown {sector_label} Organisation"
 
     existing_company = find_company_by_name_or_alias(company_name)
 
@@ -225,7 +216,7 @@ def find_or_create_company(company_name):
 
     company = Company(
         name=company_name[:255],
-        sector="Care",
+        sector=sector_label or "Unknown",
         region="Unknown",
         company_size="Unknown"
     )
@@ -244,13 +235,34 @@ def signal_exists(company_id, title, source):
     ).first() is not None
 
 
-def ingest_google_news_signals(limit_per_query=1, source_run_id=None):
+def get_google_news_searches_for_profile(profile):
+    profile_queries = get_profile_queries(profile, source_type="google_news")
+
+    if profile_queries:
+        return [
+            {
+                "query": profile_query.query,
+                "signal_type": profile_query.signal_type,
+                "confidence_score": profile_query.confidence_score,
+            }
+            for profile_query in profile_queries
+            if profile_query.query
+        ]
+
+    return GOOGLE_NEWS_SEARCHES
+
+
+def ingest_google_news_signals(limit_per_query=1, source_run_id=None, profile_id=None):
     records_found = 0
     signals_created = 0
     companies_created = 0
     skipped = 0
 
-    for search in GOOGLE_NEWS_SEARCHES:
+    profile = get_profile_or_default(profile_id)
+    sector_label = profile.sector_label if profile else "Unknown"
+    searches = get_google_news_searches_for_profile(profile)
+
+    for search in searches:
         url = build_google_news_url(search["query"])
         feed = feedparser.parse(url)
 
@@ -275,20 +287,21 @@ def ingest_google_news_signals(limit_per_query=1, source_run_id=None):
                 default_signal_type=search["signal_type"],
                 default_confidence=search["confidence_score"],
                 article_context=article_context,
+                profile=profile,
             )
 
             if not extracted.get("should_create_signal"):
                 skipped += 1
                 continue
 
-            company_name = extracted.get("company_name") or "Unknown Care Organisation"
+            company_name = extracted.get("company_name") or f"Unknown {sector_label} Organisation"
 
-            company, created = find_or_create_company(company_name)
+            company, created = find_or_create_company(company_name, sector_label=sector_label)
 
             if created:
                 companies_created += 1
 
-            source = "Google News RSS"
+            source = f"Google News RSS - {profile.name}" if profile else "Google News RSS"
 
             clean_title = clean_html_text(extracted.get("clean_title") or title)
 
@@ -307,6 +320,9 @@ def ingest_google_news_signals(limit_per_query=1, source_run_id=None):
 
             if quality_reason:
                 raw_text = f"{raw_text}\n\nQuality reason: {quality_reason}"
+
+            if profile:
+                raw_text = f"{raw_text}\n\nIngestion profile: {profile.name}"
 
             if article_url:
                 raw_text = f"{raw_text}\n\nSource link: {article_url}"
@@ -332,4 +348,5 @@ def ingest_google_news_signals(limit_per_query=1, source_run_id=None):
         "signals_created": signals_created,
         "companies_created": companies_created,
         "skipped": skipped,
+        "profile": profile.name if profile else None,
     }
