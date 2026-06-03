@@ -19,14 +19,15 @@ from app.services.find_tender_open_data_service import ingest_find_tender_open_d
 JOB_MAP = {
     "google_news": {
         "source_name": "google_news_rss",
-        "runner": lambda source_run_id: ingest_google_news_signals(
+        "runner": lambda source_run_id, ingestion_job=None: ingest_google_news_signals(
             limit_per_query=1,
             source_run_id=source_run_id,
+            profile_id=ingestion_job.profile_id if ingestion_job else None,
         ),
     },
     "companies_house": {
         "source_name": "companies_house",
-        "runner": lambda source_run_id: ingest_companies_house_signals(
+        "runner": lambda source_run_id, ingestion_job=None: ingest_companies_house_signals(
             source_run_id=source_run_id,
             search_limit_per_term=5,
             officers_per_company=10,
@@ -36,7 +37,7 @@ JOB_MAP = {
     },
     "employment_tribunals": {
         "source_name": "employment_tribunals",
-        "runner": lambda source_run_id: ingest_employment_tribunal_signals(
+        "runner": lambda source_run_id, ingestion_job=None: ingest_employment_tribunal_signals(
             source_run_id=source_run_id,
             results_per_query=3,
             recent_days=730,
@@ -44,7 +45,7 @@ JOB_MAP = {
     },
     "sector_rss": {
         "source_name": "sector_rss",
-        "runner": lambda source_run_id: ingest_sector_rss_signals(
+        "runner": lambda source_run_id, ingestion_job=None: ingest_sector_rss_signals(
             source_run_id=source_run_id,
             entries_per_feed=10,
             recent_days=90,
@@ -52,7 +53,7 @@ JOB_MAP = {
     },
     "local_authority_tenders": {
         "source_name": "local_authority_tenders",
-        "runner": lambda source_run_id: ingest_local_authority_tender_signals(
+        "runner": lambda source_run_id, ingestion_job=None: ingest_local_authority_tender_signals(
             source_run_id=source_run_id,
             results_per_query=10,
             recent_days=120,
@@ -60,7 +61,7 @@ JOB_MAP = {
     },
     "find_tender_open_data": {
         "source_name": "find_tender_open_data",
-        "runner": lambda source_run_id: ingest_find_tender_open_data_signals(
+        "runner": lambda source_run_id, ingestion_job=None: ingest_find_tender_open_data_signals(
             source_run_id=source_run_id,
             recent_days=14,
             max_packages=4,
@@ -71,9 +72,14 @@ JOB_MAP = {
 }
 
 
-def start_source_run(source_name):
+def start_source_run(source_name, ingestion_job=None):
+    profile_suffix = ""
+
+    if ingestion_job and ingestion_job.profile:
+        profile_suffix = f":{ingestion_job.profile.slug}"
+
     run_log = SourceRunLog(
-        source_name=source_name,
+        source_name=f"{source_name}{profile_suffix}",
         status="running",
         records_found=0,
         signals_created=0,
@@ -147,14 +153,18 @@ def execute_job(job_name, ingestion_job=None):
     source_name = job_config["source_name"]
     runner = job_config["runner"]
 
-    run_log = start_source_run(source_name)
+    run_log = start_source_run(source_name, ingestion_job=ingestion_job)
     mark_job_running(ingestion_job, run_log)
 
     print(f"Starting job: {job_name}", flush=True)
+
+    if ingestion_job and ingestion_job.profile:
+        print(f"Ingestion profile: {ingestion_job.profile.name}", flush=True)
+
     print(f"Source run ID: {run_log.id}", flush=True)
 
     try:
-        result = runner(run_log.id)
+        result = runner(run_log.id, ingestion_job=ingestion_job)
 
         complete_source_run(
             run_log,
@@ -168,6 +178,9 @@ def execute_job(job_name, ingestion_job=None):
         print(f"Signals created: {result.get('signals_created', 0)}", flush=True)
         print(f"Companies created: {result.get('companies_created', 0)}", flush=True)
         print(f"Skipped: {result.get('skipped', 0)}", flush=True)
+
+        if result.get("profile"):
+            print(f"Profile: {result.get('profile')}", flush=True)
 
         return 0
 
