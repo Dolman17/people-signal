@@ -9,10 +9,17 @@
         <p class="mt-2 text-slate-400">Platform overview, ingestion, cleanup and system tools.</p>
     </div>
 
-    <a href="{{ url_for('admin.merge_companies') }}"
-       class="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800">
-        Merge companies
-    </a>
+    <div class="flex flex-wrap gap-3">
+        <a href="{{ url_for('admin_profiles.list_profiles') }}"
+           class="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400">
+            Ingestion profiles
+        </a>
+
+        <a href="{{ url_for('admin.merge_companies') }}"
+           class="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800">
+            Merge companies
+        </a>
+    </div>
 </div>
 
 <div class="mb-6 rounded-2xl border border-slate-800 bg-slate-900 p-2">
@@ -65,6 +72,22 @@
 <section id="admin-tab-ingestion"
          data-admin-tab-panel="ingestion"
          class="admin-tab-panel hidden">
+    <div class="mb-6 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-5">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <h2 class="font-semibold text-cyan-100">Configurable sector ingestion</h2>
+                <p class="mt-1 text-sm text-slate-300">
+                    Google News can now run against a selected ingestion profile, including sector prompts, trigger terms and custom queries.
+                </p>
+            </div>
+
+            <a href="{{ url_for('admin_profiles.list_profiles') }}"
+               class="inline-flex rounded-lg border border-cyan-500/40 px-4 py-2 text-sm font-semibold text-cyan-300 hover:bg-cyan-500/10">
+                Manage profiles
+            </a>
+        </div>
+    </div>
+
     <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-7">
         <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
             <h2 class="font-semibold text-white">Seed demo data</h2>
@@ -82,12 +105,24 @@
         <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
             <h2 class="font-semibold text-white">Google News</h2>
             <p class="mt-2 text-sm leading-6 text-slate-400">
-                Runs the Google News RSS scanner, resolves publisher URLs, extracts company names and creates trigger signals.
+                Runs Google News using the selected ingestion profile's sector prompt, trigger terms and custom searches.
             </p>
 
-            <form method="POST" action="{{ url_for('admin.run_google_news') }}" class="mt-5">
+            <form method="POST" action="{{ url_for('admin_jobs.run_google_news_queued') }}" class="mt-5 space-y-3">
+                <div>
+                    <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Profile</label>
+                    <select name="profile_id"
+                            class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100">
+                        {% for profile in active_ingestion_profiles %}
+                            <option value="{{ profile.id }}" {% if profile.is_default %}selected{% endif %}>
+                                {{ profile.name }}{% if profile.is_default %} (default){% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
                 <button class="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400">
-                    Run Google News
+                    Queue Google News
                 </button>
             </form>
         </div>
